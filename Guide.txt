@@ -1,0 +1,617 @@
+================================================================================
+ZUTRAD VENTURES DATA CONTROL - COMPREHENSIVE SYSTEM DOCUMENTATION
+================================================================================
+
+================================================================================
+SECTION 1: CORE FEATURES & FUNCTIONS
+================================================================================
+
+AUTHENTICATION & SESSION
+• User login with email/password verification
+• First-time login password reset enforcement
+• Automatic token expiration handling (401 redirects to login)
+• localStorage-based session persistence
+• Forgot password with email verification
+
+CLIENT MANAGEMENT
+• Create new clients (companies)
+• View all clients with their machines
+• Delete clients with cascading machine deletion
+• Search clients by name or address
+
+MACHINE/EQUIPMENT TRACKING
+• Register new machines with: serial number, type, line number, installation date, maintenance cycle
+• Update machine maintenance records and usage status
+• Delete machines with confirmation
+• Search by serial number, machine type, or client
+• Display machine images based on type (Macsa, Savema, Sojet, BestCode)
+
+REPORT MANAGEMENT
+• Create incident reports with images and details
+• Upload multiple images per report
+• View fullscreen images in modal
+• Approve/reject reports (admin-only)
+• Track report status (pending → approved/rejected)
+• Search by factory name or report details
+
+MAINTENANCE TRACKING
+• Log maintenance activities with machine, date, notes
+• Mark tasks as complete
+• Track by client and machine type
+• Search by machine, message, or client
+
+SUPPLY CHAIN
+• Log goods supplied with part numbers and quantities
+• Track supply dates
+• Audit trail with user and timestamp
+• Search by goods name, client, or part number
+
+PARTS INVENTORY (STORE)
+• Organized by machine type (Macsa, Savema, Sojet, BestCode)
+• Add parts with serial/part numbers, description, quantity
+• Track last update date
+• Dedicated store page per machine type
+
+USER MANAGEMENT
+• Create users with roles: Engineer, Receptionist, Administrator
+• View all system users and their permissions
+• Delete users with confirmation
+• Assign/revoke special page access
+• Search by name or role
+
+================================================================================
+SECTION 2: ROLE-BASED PERMISSIONS & ACCESS CONTROL
+================================================================================
+
+ADMINISTRATOR
+✅ Full system access to all pages and features
+✅ Can create any user type (Admin, Engineer, Receptionist)
+✅ Can create clients and machines
+✅ Can assign/remove special permissions
+✅ Can approve/reject reports
+✅ Can manage all data (users, clients, machines, supplies)
+✅ Pages: Admin, Users, Clients, Client Machines, Reports, Maintenance, Supply, Store
+
+ENGINEER
+✅ Default: Client Machines, Reports, Maintenance (can view/log)
+✅ Cannot approve reports (can only view)
+✅ Can access Store + Supply ONLY with special permission grant
+❌ Cannot access: Admin panel, User management
+Restricted Pages: Store, Supply (unless granted)
+
+RECEPTIONIST
+✅ Default: Client Machines, Reports, Supply (can view/log)
+✅ Cannot approve reports (can only view)
+✅ Can access Store + Maintenance ONLY with special permission grant
+❌ Cannot access: Admin panel, User management
+Restricted Pages: Store, Maintenance (unless granted)
+
+PAGE ACCESS MATRIX
+╔════════════════════════╦═════════╦══════════╦═══════════════╦════════════════╗
+║ Feature                ║ Admin   ║ Engineer ║ Receptionist  ║ Special Access ║
+╠════════════════════════╬═════════╬══════════╬═══════════════╬════════════════╣
+║ Login                  ║ ✅      ║ ✅       ║ ✅            ║ No             ║
+║ Admin Dashboard        ║ ✅      ║ ❌       ║ ❌            ║ N/A            ║
+║ User Management        ║ ✅      ║ ❌       ║ ❌            ║ N/A            ║
+║ Client Management      ║ ✅      ║ ❌       ║ ❌            ║ N/A            ║
+║ Client Machines        ║ ✅      ║ ✅       ║ ✅            ║ No             ║
+║ Reports                ║ ✅      ║ ✅       ║ ✅            ║ No             ║
+║ Maintenance            ║ ✅      ║ ✅ (Def) ║ ❌            ║ Yes            ║
+║ Supply                 ║ ✅      ║ ❌       ║ ✅ (Def)      ║ Yes            ║
+║ Store                  ║ ✅      ║ ❌       ║ ❌            ║ Yes            ║
+║ Store Sub-Pages        ║ ✅      ║ ❌       ║ ❌            ║ Inherits Store ║
+╚════════════════════════╩═════════╩══════════╩═══════════════╩════════════════╝
+
+================================================================================
+SECTION 3: API ENDPOINTS
+================================================================================
+
+AUTHENTICATION
+• POST /api/auth/login → token + user data
+• POST /api/auth/reset-password → password update
+
+USERS
+• POST /api/users → create user
+• GET /api/users → all users + permissions
+• DELETE /api/users/:id → delete user
+• GET /api/users/my-permissions → user's special permissions
+• POST /api/users/assign-role → grant page access (userId, page)
+• POST /api/users/remove-role → revoke page access (userId, page)
+
+CLIENTS
+• POST /api/clients → create client (companyName, address)
+• GET /api/clients → all clients + machines
+• DELETE /api/clients/:id → delete client (cascades to machines)
+
+MACHINES
+• POST /api/clients/machines → register new machine
+• PATCH /api/clients/machines/:id → update maintenance date or usage status
+• DELETE /api/clients/machines/:id → delete machine
+
+REPORTS
+• POST /api/reports → create with image upload
+• GET /api/reports → all reports
+• PATCH /api/reports/:id/status → approve or reject
+
+MAINTENANCE
+• POST /api/maintenance → log maintenance task
+• GET /api/maintenance → all logs
+• PATCH /api/maintenance/:id/done → mark complete
+
+SUPPLY
+• POST /api/supply → log supply (goods, part number, quantity, date)
+• GET /api/supply → all supply records
+
+STORE/INVENTORY
+• POST /api/store → add inventory item
+• GET /api/store → all items (grouped by machine type)
+
+CONFIGURATION
+Base URL (dev): http://localhost:5000
+Base URL (prod): http://zutrad-ventures-data-control-env.eba-kpm7wuuy.eu-north-1.elasticbeanstalk.com
+Authentication: Bearer token in Authorization header
+File Upload: FormData for multipart/form-data requests
+
+================================================================================
+SECTION 4: EDGE CASES & CONDITIONAL LOGIC
+================================================================================
+
+AUTHENTICATION
+• 401 response clears localStorage and redirects to login from ANY page
+• First-time users must reset password before accessing dashboard
+• Login redirects based on role: Admin → /admin, Engineer/Receptionist → /clients
+
+PERMISSION LOADING
+• Permissions load asynchronously; ProtectedRoute returns null during loading
+• Admins bypass special permission fetch (always have full access)
+• Permission check gates page access; unauthorized redirect to /clients
+
+DATA VALIDATION
+• Frontend validation before API calls (all required fields checked)
+• Password: minimum 6 characters, must match confirmation
+• Buttons disabled during API calls to prevent duplicate submissions
+• Error messages persist with 2-3 second timeout
+
+CASCADING DELETES
+• Deleting client cascades to delete all associated machines
+• Confirmation dialog shown for all deletes (both client and machine)
+• Logged-in user cannot delete themselves
+
+MACHINE STATUS
+• Limited options: 'main', 'spare', 'not in use'
+• Dropdown enforces valid values only
+
+REPORT STATUS FLOW
+• Initial: 'pending'
+• Can transition: pending → approved OR pending → rejected
+• Only admins can change status
+• Buttons hide based on current status
+
+IMAGE HANDLING
+• Multiple image upload per report with preview generation
+• Image modal: click to view fullscreen, click modal to close
+• Machines display images based on type (hardcoded mappings)
+• Images stored on backend; frontend constructs full URL
+
+SEARCH & FILTERING
+• Real-time case-insensitive search
+• Filters across multiple fields simultaneously
+• Separate search states for main and secondary searches
+
+SPECIAL ROLES MANAGEMENT
+• Only Engineers and Receptionists can receive special permissions
+• Admins have all permissions by default
+• Users without permissions don't appear in "Remove" dropdown
+
+MACHINE-CLIENT RELATIONSHIP
+• Machines must belong to a client (required dropdown)
+• Searching machines also searches parent client name
+• All clients appear in dropdown dynamically from database
+
+FILE UPLOADS
+• FormData used for multipart requests (not JSON)
+• Browser sets Content-Type automatically with boundary
+• Multiple files supported in single request
+
+USER DELETION CONSTRAINTS
+• Cannot delete currently logged-in user
+• Name shown in confirmation dialog for clarity
+
+LOADING STATES
+• Separate loading state for each operation
+• Buttons disabled and text changes to "Loading..." during operations
+• Prevents user from submitting duplicate requests
+
+================================================================================
+SECTION 5: DATA MODELS
+================================================================================
+
+USER
+{
+  id: number
+  firstName: string
+  surname: string
+  email: string
+  role: 'administrator' | 'engineer' | 'receptionist'
+  isFirstLogin: boolean
+  permissions: Permission[]
+}
+
+CLIENT
+{
+  id: number
+  companyName: string
+  address: string
+  machines: MachineData[]
+}
+
+MACHINE
+{
+  id: number
+  serialNumber: string
+  machine: 'Macsa ID' | 'Savema' | 'Sojet' | 'BestCode'
+  lineInstalled: number
+  installedDate: string (YYYY-MM-DD)
+  maintenanceCycle: number (months)
+  lastMaintenanceDate: string (YYYY-MM-DD)
+  usageStatus: 'main' | 'spare' | 'not in use'
+  clientId: number
+}
+
+REPORT
+{
+  id: number
+  reportDetails: string
+  lineNumber: number
+  imagePaths: string[]
+  status: 'pending' | 'approved' | 'rejected'
+  createdAt: string (ISO timestamp)
+  client: { id: number; companyName: string }
+  user: { id: number; firstName: string; surname: string }
+}
+
+MAINTENANCE
+{
+  id: number
+  message: string
+  machine: 'Macsa ID' | 'Savema' | 'Sojet' | 'BestCode'
+  maintenanceDay: string (YYYY-MM-DD)
+  isDone: boolean
+  createdAt: string (ISO timestamp)
+  user: { id: number; firstName: string; surname: string } | null
+  client: { id: number; companyName: string } | null
+}
+
+SUPPLY
+{
+  id: number
+  goodsSupplied: string
+  partNumber: string
+  quantity: number
+  supplyDate: string (YYYY-MM-DD)
+  createdAt: string (ISO timestamp)
+  client: { id: number; companyName: string }
+  user: { id: number; firstName: string; surname: string }
+}
+
+STORE ITEM
+{
+  id: number
+  serialNumber: string
+  partNumber: string
+  machinePart: string (description)
+  machine: 'Macsa ID' | 'Savema' | 'Sojet' | 'BestCode'
+  quantity: number
+  updatedAt: string (ISO timestamp)
+}
+
+================================================================================
+SECTION 6: STATE MANAGEMENT
+================================================================================
+
+GLOBAL (localStorage)
+• token — Bearer token for all requests
+• user — Current user object (JSON stringified)
+• Persists across browser sessions
+
+PAGE-LEVEL STATE
+Each major page maintains:
+• Data arrays (clients, reports, maintenance, supply, store items)
+• Form input states (text, dropdowns, dates, file selections)
+• UI toggles (collapsible sections, edit modes)
+• Operation states (loading, error, success messages)
+• Filtered data computed from search term
+
+DATA FLOW PATTERNS
+
+1. PAGE LOAD FLOW
+   - useEffect with empty dependency triggers on mount
+   - Call apiFetch() to backend endpoint
+   - Parse JSON response
+   - Set state with data
+   - Set loading: false
+
+2. SEARCH/FILTER FLOW
+   - User types into search input
+   - Component updates local search state
+   - Filtered array computed using .filter() with search term
+   - Filtered results re-render automatically
+
+3. CREATE FLOW
+   - User fills form
+   - Clicks save/submit button
+   - Form validation
+   - POST apiFetch() with JSON.stringify() body
+   - On success: Clear form, show success message, call refresh function
+   - On error: Display error message, keep form filled
+
+4. UPDATE FLOW
+   - User clicks edit/toggle
+   - Form inputs appear inline
+   - User modifies and clicks save
+   - PATCH apiFetch() with changed fields
+   - On success: Hide edit form, call refresh function
+   - On error: Display error, keep edit mode open
+
+5. DELETE FLOW
+   - User clicks delete
+   - Confirmation dialog (window.confirm())
+   - DELETE apiFetch() if confirmed
+   - On success: Remove from local state, call refresh function
+   - On error: Alert user with error message
+
+6. PERMISSIONS FLOW
+   - usePermissions() hook reads user from localStorage
+   - Check if role is 'administrator'
+   - If not admin, async fetch /api/users/my-permissions
+   - Parse permission array
+   - Set loaded: true
+   - Return computed boolean flags for each page
+   - ProtectedRoute uses these flags to allow/block access
+
+API RESPONSE HANDLING
+• Check response.ok or response.status
+• Parse JSON: const data = await response.json()
+• On error: Set error state with data.message
+• On success: Update relevant state array
+• Always set loading: false in finally-like pattern
+
+COMPONENT COMMUNICATION
+Parent pages pass callbacks to children:
+• onUpdate() — Refresh parent data after child modifies data
+• onDelete() — Refresh parent data after child deletes data
+• onMachineAdded() — Refresh parent data after new machine created
+• onStatusChange() — Refresh parent data after status update
+• onMarkDone() — Refresh parent data after marking maintenance done
+
+SEARCH TERM PROPAGATION
+• App.tsx manages global searchTerm state
+• Passed as prop to SearchBar and pages
+• Pages filter their data based on searchTerm
+• Separate per-page search states for secondary searches
+
+FORM STATE PATTERNS
+• Separate state for each input field
+• Clear all fields on successful submit
+• Preserve field values on validation error
+• Show error messages for validation
+
+IMAGE HANDLING STATE
+• File selection triggers FileReader for preview generation
+• Preview array built from FileReader results
+• Files sent via FormData (not cleared in state, but could be)
+• Image paths from backend used for display with full URL construction
+
+ASYNC LOADING MANAGEMENT
+• Separate loading state for each async operation
+• Buttons disabled during loading to prevent duplicate submissions
+• Loading indicators (text change on button, "Loading..." message)
+
+================================================================================
+SECTION 7: COMPONENTS & PAGES STRUCTURE
+================================================================================
+
+PAGES
+
+1. LoginPage (src/pages/Login/LoginPage.tsx)
+   - Authentication entry point
+   - Email/password input with toggle password visibility
+   - Error message display
+   - Links to forgot password
+   - Role-based routing on successful login
+
+2. ForgotPassword (src/pages/ForgotPassword/ForgotPassword.tsx)
+   - Password reset page
+   - Email input
+   - New password with confirmation
+   - Password strength validation (min 6 characters)
+   - Auto-redirect to login on success
+
+3. AdminPage (src/pages/Admin/AdminPage.tsx)
+   - Admin dashboard
+   - Composite page with multiple admin sub-components:
+     * CreateUser — User creation form
+     * SpecialRoles — Permission assignment/revocation
+     * AddClient — Client creation
+     * ViewReports — Report overview component
+     * Supply — Supply overview component
+     * Maintenance — Maintenance overview component
+
+4. AllUsers (src/pages/Admin/AllUsers.tsx)
+   - User management page
+   - Lists all system users with roles and permissions
+   - Delete users with confirmation
+   - Search by name or role
+   - Shows assigned permissions per user
+
+5. AllClients (src/pages/Admin/AllClients.tsx)
+   - Client management page
+   - Lists all clients with their machines
+   - Delete clients (cascading to machines)
+   - Delete individual machines
+   - Search by company name, address, or machine details
+
+6. ClientMachinesPage (src/pages/ClientMachines/ClientMachinesPage.tsx)
+   - Machine tracking hub
+   - Displays all client machines organized by company
+   - ClientMachinesInput — Register new machines
+   - ClientMachines — Individual machine cards with edit/delete
+   - Collapsible input section with arrow toggle
+   - Real-time search and filtering
+
+7. ReportsPage (src/pages/Reports/ReportsPage.tsx)
+   - Incident reporting
+   - Create new reports with textarea and image uploads
+   - Multiple file selection with preview
+   - Client dropdown (dynamically populated)
+   - Line number input
+   - Collapsible input with arrow toggle
+   - Real-time search/filter
+   - Displays all reports with approval status
+
+8. MaintenancePage (src/pages/Maintenance/MaintenancePage.tsx)
+   - Maintenance tracking
+   - Create maintenance logs
+   - Client and machine dropdowns
+   - Maintenance date input
+   - Mark tasks as done
+   - Search by machine, message, or client
+   - Collapsible input with arrow toggle
+
+9. SupplyPage (src/pages/SupplyPage/SupplyPage.tsx)
+   - Supply management
+   - Log goods supplied with part numbers
+   - Quantity tracking
+   - Supply date input
+   - Client dropdown
+   - Search by goods, part number, or client
+   - Collapsible input with arrow toggle
+
+10. StorePage (src/pages/Store/StorePage.tsx)
+    - Inventory hub
+    - Displays inventory organized by machine type
+    - Routes to machine-specific store pages
+    - StoreInput — Add new inventory items
+    - Search functionality
+
+11. Store Machine Pages
+    - /store/macsa-store → MacsaStorePage
+    - /store/savema-store → SavemaStorePage
+    - /store/sojet-store → SojetStorePage
+    - /store/bestcode-store → BestCodeStorePage
+    - Dedicated pages for each machine type
+
+12. NotFoundPage (src/pages/NotFound/NotFoundPage.tsx)
+    - 404 error handler
+
+SMART COMPONENTS
+
+1. ProtectedRoute (src/components/ProtectedRoute.tsx)
+   - Route access control wrapper
+   - Checks user permissions before rendering
+   - Waits for permission loading to avoid flashing wrong content
+   - Redirects unauthorized users to /clients
+
+2. CreateUser (src/pages/Admin/CreateUser.tsx)
+   - User creation form
+   - Fields: First name, surname, email, role dropdown
+   - Success/error messaging with visual feedback
+   - Link to see all users
+
+3. SpecialRoles (src/pages/Admin/SpecialRoles.tsx)
+   - Permission management
+   - Two sections: Assign and Remove special page roles
+   - Filtered user lists
+   - Dynamic permission dropdown based on selected user
+   - Success/error messaging
+
+4. AddClient (src/pages/Admin/AddClient.tsx)
+   - Client creation
+   - Fields: Company name, address
+   - Success/error messaging
+   - Link to see all clients
+
+5. ClientMachinesInput (src/pages/ClientMachines/ClientMachinesInput.tsx)
+   - Machine registration
+   - 8 fields: serial number, client dropdown, line number, machine type dropdown,
+     installation date, maintenance cycle, usage status dropdown
+   - Full validation before submit
+   - Auto-clears on success
+
+6. ClientMachines (src/pages/ClientMachines/ClientMachines.tsx)
+   - Individual machine display
+   - Shows machine details as cards with images
+   - Toggle edit mode for: last maintenance date and usage status
+   - Update/Cancel buttons
+   - Delete with confirmation
+   - Dynamic images based on machine type
+
+7. ReportMessage (src/pages/Reports/ReportMessage.tsx)
+   - Individual report display
+   - Shows report details, images, metadata
+   - Image gallery with fullscreen modal on click
+   - Approve/Reject buttons (admin-only)
+   - Status-aware button states
+   - Displays user and timestamp
+
+8. ReportMessages (src/pages/Reports/ReportMessages.tsx)
+   - Report list container
+   - Maps over reports and renders individual ReportMessage components
+
+9. MaintenanceMessage (src/pages/Maintenance/MaintenanceMessage.tsx)
+   - Individual maintenance display
+   - Shows maintenance details and scheduled date
+   - Mark as done button with visual state change
+   - Metadata: client, date logged, logged by
+
+10. MaintenanceMessages (src/pages/Maintenance/MaintenanceMessages.tsx)
+    - Maintenance list container
+
+11. StoreInput (src/pages/Store/StoreInput.tsx)
+    - Inventory item addition
+    - Fields: serial number, part number, machine part name, machine type dropdown, quantity
+    - Full validation
+    - Success/error messaging
+
+12. StoreContent (src/pages/Store/StoreContent.tsx)
+    - Inventory display by machine type
+    - Organizes items by machine category
+    - Displays part details and quantities
+
+================================================================================
+SECTION 8: SYSTEM SUMMARY
+================================================================================
+
+This is an enterprise equipment and supply chain tracking system with:
+
+ARCHITECTURE
+• Multi-tenant design supporting multiple client companies
+• Role-based access control with flexible permission assignment
+• Real-time inventory management for parts across 4 machine types
+• Incident reporting system with approval workflow
+• Maintenance scheduling with completion tracking
+• Supply chain logging for audit trails
+• User management with granular permission control
+• Responsive data management with real-time search and filtering
+
+KEY FEATURES
+• Automatic token expiration and reauthentication
+• Cascading data relationships (clients → machines)
+• Image upload and gallery functionality
+• Audit trail with user and timestamp tracking
+• Special permission system for role extension
+• Search and filter across all data types
+• Status tracking for reports and maintenance tasks
+• Multi-machine type support (Macsa, Savema, Sojet, BestCode)
+
+TECH STACK
+• React 18
+• TypeScript
+• React Router
+• localStorage persistence
+• REST API with Bearer token authentication
+• FormData for file uploads
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================
